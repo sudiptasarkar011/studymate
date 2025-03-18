@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Topic Analyzer</title>
+</head>
+<body>
+    <h2>Upload PDFs for Topic Analysis</h2>
+    <input type="file" id="pdfFile" accept="application/pdf" multiple>
+    <button onclick="uploadPDF()">Upload</button>
+    
+    <h3>Extracted Topics:</h3>
+    <ul id="topicsList"></ul>
+    
+    <script>
+        function uploadPDF() {
+            let fileInput = document.getElementById("pdfFile");
+            let files = fileInput.files;
+            
+            if (files.length === 0) {
+                alert("Please select at least one PDF file.");
+                return;
+            }
+            
+            let formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append("files", files[i]); // Change to "files" for multiple uploads
+            }
+            
+            fetch("http://127.0.0.1:5000/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let topicsList = document.getElementById("topicsList");
+                topicsList.innerHTML = "";
+                
+                if (data.topics) {
+                    data.topics.forEach((topic, index) => {
+                        let listItem = document.createElement("li");
+                        listItem.textContent = `File ${index + 1}: ${topic}`;
+                        topicsList.appendChild(listItem);
+                    });
+                } else {
+                    topicsList.innerHTML = "<li>No topics found or error occurred.</li>";
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+</body>
+</html>
