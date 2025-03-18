@@ -37,12 +37,10 @@
                 let topicsList = document.getElementById("topicsList");
                 topicsList.innerHTML = "";
                 
-                if (data.topics) {
-                    data.topics.forEach((topic, index) => {
-                        let listItem = document.createElement("li");
-                        listItem.textContent = `File ${index + 1}: ${topic}`;
-                        topicsList.appendChild(listItem);
-                    });
+                if (data.summary) {
+                    let listItem = document.createElement("li");
+                    listItem.textContent = `Summary: ${data.summary}`;
+                    topicsList.appendChild(listItem);
                 } else {
                     topicsList.innerHTML = "<li>No topics found or error occurred.</li>";
                 }

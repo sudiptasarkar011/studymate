@@ -6,12 +6,24 @@ from werkzeug.utils import secure_filename
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
 import numpy as np
-from flask_cors import CORS  # Add this import
+from flask_cors import CORS
+import chromadb  # Import Chroma DB
+from transformers import pipeline  # Import transformers for LLM
+import torch
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Initialize Chroma DB
+client = chromadb.Client()
+collection = client.create_collection("pdf_summaries")
+
+# Initialize the summarization pipeline
+summarizer = pipeline("summarization")
+
+print(torch.__version__)
 
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
@@ -51,7 +63,7 @@ def upload_file():
         print("No files selected.")  # Debugging statement
         return jsonify({"error": "No selected files"}), 400
     
-    all_topics = []  # To store topics from all files
+    all_texts = []  # To store text from all files
     
     for file in files:
         if file.filename == '':
@@ -70,21 +82,26 @@ def upload_file():
             cleaned_text = preprocess_text(text)
             print(f"Cleaned text from {filename}: {cleaned_text}")  # Debugging statement
             
-            if not cleaned_text:  # Check if cleaned text is empty
-                continue  # Skip this file if no valid text is extracted
-            
-            topics = extract_keywords([cleaned_text])
-            all_topics.extend(topics)  # Add topics from this file to the list
+            if cleaned_text:  # Only process if cleaned text is not empty
+                all_texts.append(cleaned_text)
+                # Store the text in Chroma DB with a unique ID
+                collection.add(
+                    documents=[cleaned_text], 
+                    metadatas=[{"filename": filename}],
+                    ids=[filename]  # Use filename as a unique ID
+                )
     
-    if not all_topics:
-        return jsonify({"error": "No valid topics extracted from the uploaded PDFs."}), 400
+    if not all_texts:
+        return jsonify({"error": "No valid text extracted from the uploaded PDFs."}), 400
     
-    # Remove duplicates
-    unique_topics = list(set(all_topics))
+    # Generate a summary using the LLM
+    combined_text = " ".join(all_texts)
+    summary = summarizer(combined_text, max_length=150, min_length=30, do_sample=False)
     
-    # Format the output for better readability
-    formatted_topics = [f"Keyword: {topic[0]}, Score: {topic[1]}" for topic in unique_topics]
-    return jsonify({"topics": formatted_topics})
+    # Debugging: Print the summary
+    print(f"Generated summary: {summary[0]['summary_text']}")  # Debugging statement
+    
+    return jsonify({"summary": summary[0]['summary_text']})
 
 if __name__ == "__main__":
     app.run(debug=True)
