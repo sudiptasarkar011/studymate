@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Upload and Summary</title>
+</head>
+<body>
+    <h1>Upload PDFs and Get Summary in JSON</h1>
+    <input type="file" id="pdfFiles" accept="application/pdf" />
+    <button id="uploadButton">Upload PDF</button>
+    <p class="error" id="errorMessage"></p>
+    <h2>Summarized JSON Output:</h2>
+    <pre id="jsonOutput"></pre>
+
+    <script>
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const fileInput = document.getElementById('pdfFiles');
+            const errorMessage = document.getElementById('errorMessage');
+            const jsonOutput = document.getElementById('jsonOutput');
+
+            errorMessage.textContent = '';
+            jsonOutput.textContent = '';
+
+            const files = fileInput.files;
+            if (files.length > 0) {
+                const formData = new FormData();
+                formData.append('file', files[0]);
+
+                try {
+                    const response = await fetch('http://localhost:5001/analyze-pdf/', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Network response was not ok: ${response.status} ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    jsonOutput.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    errorMessage.textContent = 'Error uploading PDF: ' + error.message;
+                }
+            } else {
+                errorMessage.textContent = 'Please select a PDF file to upload.';
+            }
+        });
+    </script>
+</body>
+</html>
